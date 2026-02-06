@@ -54,6 +54,7 @@ The system is divided into **Long-term Memory (_DOCS)** and **Working Memory (_T
 ---
 
 ## III. Standard Operating Procedure (SOP)
+![P-C-E-A Loop](https://github.com/JeffSiaYuHeng/dual-brain-system/P-C-E-A%20Loop.png "P-C-E-A Loop")
 
 ### 🌀 Core Cycle: P-C-E-A Loop
 
