@@ -143,6 +143,36 @@ your-project/
 - Include technology/frameworks used
 - Example: [See example in workspace structure]
 
+**🔧 Auto-generation Option (Recommended):**
+Instead of manually creating this file, use the provided `scripts/generate-structure.js` to automatically scan and generate the structure:
+
+```bash
+# Place generate-structure.js in your scripts/ directory, then run:
+node scripts/generate-structure.js
+
+# Or add to package.json:
+"scripts": {
+  "gen:structure": "node scripts/generate-structure.js"
+}
+
+# Then:
+npm run gen:structure
+```
+
+**Script Features:**
+- 🤖 Auto-generates current directory tree
+- 🚫 Automatically ignores: `node_modules`, `.git`, `.next`, `dist`, `build`, `coverage`, etc.
+- ⚡ Prevents AI path hallucination by reflecting actual filesystem
+- 📊 Includes scanned directories and file counts
+- 🔄 Safe to run repeatedly (regenerates the file)
+- 🎯 Configurable scan depth and ignored directories
+
+**Benefits:**
+- No manual maintenance needed
+- Always reflects current project structure
+- Perfect for pre-planning agent execution
+- Eliminates "path not found" errors during development
+
 **Create `_DOCS/01_DB_SCHEMA.md`:**
 - Define your database schema (tables, fields, types, relationships)
 - Note any constraints or indexes
@@ -341,14 +371,40 @@ Derived from: _PLAN.md - Phase 1: Authentication
 
 **What to do**:
 
-1. **Review** the code changes (run `git diff` to see all modifications)
-2. **Verify** that `_INSTRUCTION.md` was followed exactly
-3. **Check** that NO files were modified outside the Context Scope
-4. **Run** the code:
+1. **Physical Heritage Audit** (Integrity Verification):
+   Before reviewing logic, verify the physical state of the project by executing these verification steps:
+
+   **Example Commands** (may vary based on your tech stack):
+   
+   ```bash
+   # Step 1: Sync structure documentation
+   npm run gen:structure
+   
+   # Step 2: Clean cache (prevents stale artifacts)
+   rm -rf .next          # For Next.js (or: rmdir /s /q .next on Windows)
+   
+   # Step 3: Verify build integrity
+   npm run build
+   ```
+   
+   - **CRITICAL**: If the build command fails (non-zero exit code):
+     1. **CAPTURE** the specific error message, line number, and stack trace
+     2. **STOP** the audit immediately
+     3. Mark Status as **FAILED (Build Error)**
+     4. Record error in logs (see Step 5 below)
+
+2. **Review** the code changes (run `git diff` to see all modifications)
+
+3. **Verify** that `_INSTRUCTION.md` was followed exactly
+
+4. **Check** that NO files were modified outside the Context Scope
+
+5. **Run** the code:
    - Execute tests related to the feature
    - Manual testing (happy path + edge cases)
    - Check for integration issues with existing code
-5. **Record findings** in `_DOCS/LOGS/YYYY-MM-DD.md`:
+
+6. **Record findings** in `_DOCS/LOGS/YYYY-MM-DD.md`:
    - Goals and completed tasks ✅
    - Issues or bugs discovered ⚠️
    - What to work on next 🎯
