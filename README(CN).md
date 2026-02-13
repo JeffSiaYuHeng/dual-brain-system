@@ -1,617 +1,819 @@
-# 双脑系统 (Dual-Brain System) 规范文档 (V2.0)💡
+# 双脑系统 (Dual-Brain System) 规范文档 (V2.1) 💡
+
+📖 **中文版本** | [English Version](README.md)
 
 *为了优化 Side Project 的产出比，设计的一套基于元认知理论的 AI 协作协议 🤖*
 
+**最新更新 (v2.1)**:
+- 🔗 依赖关系图分析（自动检测文件关系）
+- 📖 参考范围（Coder 只读上下文）
+- ⚡ 调试模式（简单错误的快速修复路径 E→C）
+- 🔍 影响审计（API 副作用追踪）
 
-# Introduction
+---
 
-关于这个理念的落地，我结合了之前开会时Hiredly InnoTech团队CTO和我提及的“规格驱动开发（Spec-Driven Development）”概念，并参考了之前读过的丹尼尔·卡尼曼在《思考，快与慢》中提出的系统1与系统2理论，创建了一个基于Markdown的文件系统。书中定义的系统1是快速、直觉且感性的，负责日常的自动化决策；而系统2则是缓慢、审慎且逻辑化的，负责复杂的分析性推理。我设计的这套系统是在模拟这种认知运作方式，将“规格”作为引导AI**系统2深度思考的媒介**并把任务细分为能够为**系统1的直觉快速处理常规任务**，更能通过规格文档的约束进入系统2的慢思考模式，对复杂的业务逻辑进行严密的推演和架构设计。
+## 目录
 
-在目前的系统实践中，我设计了由**长期记忆**与**短期记忆**组成的规格结构。长期记忆涵盖了项目结构、数据库关系文档、软件需求说明（SRS）以及服务端动作逻辑，构成了项目的核心知识底座；短期记忆则通过_Plan.md文件来定义具体任务的行动方案，明确目标、范围及验证清单，从而形成任务的初步全局视图。随后，系统会基于计划生成_Instruction.md，将构思转化为一系列可执行的指令流。这种将元认知思维引入项目结构的做法，结合近期推出的“Agent-skill（代理技能）”机制，使AI能够脱离固定的职业标签，转而以技能和规格为驱动，实现更具灵活性和自主性的深度协作。
+- [简介](#简介)
+- [存储架构](#一-存储架构-memory-structure)
+- [角色与权限](#二-角色与权限-agent-roles--permissions)
+- [标准化作业流程](#三-标准化作业流程-sop)
+- [新功能 (v2.1)](#四-新功能-v21)
+- [防御性规则](#五-防御性规则)
+- [按需分配模型](#六-按需分配模型-cost-aware-routing)
+- [快速开始指南](#七-初始化与快速开始指南)
+- [工作流示例](#具体示例构建你的第一个功能)
 
-其实更主要的是为了节省开发Side Project的成本，能够透过不同的IDE或者CLI来协作达到低成本且通用于不同模型的Adapter的感觉，他们只需要明白目前的任务以及结构作为输入的媒介，这就很大程度的减少了Token的消耗，并且规范了它们能够触及的范围，能够更加全面的掌控整体的进程，但是比较小型的Task就还是一样Single File， Single Prompt就能够解决了，不需要到杀鸡用牛刀的感觉，所以整个模式在运作的时候其实也是很多人工的介入，之后还是会继续优化, 到目前为止整体都是靠直觉驱动来设计的，实用性有待考证。
+---
+
+# 简介
+
+关于这个理念的落地，我结合了之前开会时 Hiredly InnoTech 团队 CTO 和我提及的"规格驱动开发（Spec-Driven Development）"概念，并参考了之前读过的丹尼尔·卡尼曼在《思考，快与慢》中提出的系统1与系统2理论，创建了一个基于 Markdown 的文件系统。书中定义的系统1是快速、直觉且感性的，负责日常的自动化决策；而系统2则是缓慢、审慎且逻辑化的，负责复杂的分析性推理。我设计的这套系统是在模拟这种认知运作方式，将"规格"作为引导 AI **系统2深度思考的媒介**并把任务细分为能够为**系统1的直觉快速处理常规任务**，更能通过规格文档的约束进入系统2的慢思考模式，对复杂的业务逻辑进行严密的推演和架构设计。
+
+在目前的系统实践中 (v2.1)，我设计了由**长期记忆**与**短期记忆**组成的规格结构。长期记忆涵盖了项目结构、数据库关系文档、软件需求说明（SRS）、服务端动作逻辑以及**依赖关系**，构成了项目的核心知识底座；短期记忆则通过 `_PLAN.md` 文件来定义具体任务的行动方案，明确目标、范围及验证清单，从而形成任务的初步全局视图。随后，系统会基于计划生成 `_INSTRUCTION.md`，将构思转化为一系列可执行的指令流。这种将元认知思维引入项目结构的做法，结合近期推出的"Agent-skill（代理技能）"机制，使 AI 能够脱离固定的职业标签，转而以技能和规格为驱动，实现更具灵活性和自主性的深度协作。
+
+其实更主要的是为了节省开发 Side Project 的成本，能够透过不同的 IDE 或者 CLI 来协作达到低成本且通用于不同模型的 Adapter 的感觉，他们只需要明白目前的任务以及结构作为输入的媒介，这就很大程度的减少了 Token 的消耗，并且规范了它们能够触及的范围，能够更加全面的掌控整体的进程，但是比较小型的 Task 就还是一样 Single File，Single Prompt 就能够解决了，不需要到杀鸡用牛刀的感觉。
 
 ---
 
 ## 一、 存储架构 (Memory Structure)
 
-系统分为 **长期记忆 (_DOCS)** 和 **工作记忆 (_TASK)**，实现“事实”与“意图”的物理隔离。
+系统分为 **长期记忆 (_DOCS)** 和 **工作记忆 (_TASK)**，实现"事实"与"意图"的物理隔离。
 
 ### 1. 📂 _DOCS (长期记忆 - 静态真理)
 
-> **原则**：AI 只读不写（除 Evaluator 记录日志与 Archivist 更新快照外）。
-> 
-- **00_STRUCTURE.md**：文件地图。防止 AI 虚构路径。
-- **01_DB_SCHEMA.md**：后端真理。字段、类型、权限的唯一来源。
-- **02_STYLE_GUIDE.md**：视觉与交互规范。确保 UI 一致性。
-- **03_SERVER_ACTIONS.md**：API 协议。定义前后端通讯黑盒。
-- 04_TECH_STACK.md : 定义项目中**被官方允许使用的技术栈**。
-- 05_PROJECT_SNAPSHOT.md: 项目高密度快照。由 Archivist 维护，记录当前功能状态与技术决策结论。
-- **LOGS/**：历史快照。记录每一个 Loop 的技术实现细节。
-    - LOG(format).md: 提供Log的format.
+> **原则**：AI 只读不写（除 Evaluator 记录日志与 Archivist 更新外）。
+
+| 文件 | 描述 | 维护者 | 更新方式 |
+|------|------|--------|----------|
+| **00_STRUCTURE.md** | 文件树地图。防止 AI 虚构路径。 | 自动生成 | `npm run gen:structure` |
+| **01_DB_SCHEMA.md** | 数据库模式。字段、类型、关系的唯一真理来源。 | 手动 | 人工编辑 |
+| **02_STYLE_GUIDE.md** | UI/UX 规范。确保视觉一致性。 | 手动 | 人工编辑 |
+| **03_SERVER_ACTIONS.md** | API 协议 + 副作用。定义前后端契约。 | 手动 + Archivist | 人工 + 影响审计 |
+| **04_TECH_STACK.md** | 官方允许的技术栈和版本。 | 手动 | 人工编辑 |
+| **05_PROJECT_SNAPSHOT.md** | 高密度项目状态。当前功能、决策、债务。 | Archivist | 里程碑后 |
+| **06_DEPENDENCY_GRAPH.md** | 导入/导出关系图。显示文件依赖关系。 | 自动生成 | `npm run gen:graph` |
+| **LOGS/** | 历史执行日志。每日会话记录。 | Evaluator | 每个任务后 |
+
+**v2.1 新增**:
+- ✨ `06_DEPENDENCY_GRAPH.md` - 自动分析导入/导出关系
+- ✨ `03_SERVER_ACTIONS.md` - 现在包含显式的副作用文档
 
 ### 2. 📂 _TASK (工作记忆 - 动态执行)
 
 > **原则**：高频变动，任务结束即清理或更新。
-> 
-- **_INSTRUCTION.md**：**任务卡 (AI Blueprint)**。记录“怎么做”和“限制在哪”。
+
+| 文件 | 用途 | 创建者 | 使用者 |
+|------|------|--------|--------|
+| **_PLAN.md** | 战略路线图。"要做什么"和"为什么做"。 | Planner（人/AI） | Planner, Evaluator |
+| **_INSTRUCTION.md** | 任务蓝图。"怎么做"及范围约束。 | Planner | Coder |
+| **_FIX_INSTRUCTION.md** | 调试模式快速修复。仅限语法/导入错误。 | Evaluator | Coder |
+
+**v2.1 新增**:
+- ✨ `_FIX_INSTRUCTION.md` - 紧急修复指令绕过 Planner 处理简单错误
 
 ---
 
-## 二、 角色与权限 (Agent Roles)
+## 二、 角色与权限 (Agent Roles & Permissions)
 
-- **_PLAN.md**：**战略板 (Human Focus)**。记录“要做什么”和“为什么做”。
-
-**Folder Strucuture**
-
-**Roles**
-
-| 角色 | 核心职能 | 准入权限 (Read) | 写入权限 (Write) |
-| --- | --- | --- | --- |
-| **Planner** | 战略转战术 | _PLAN, _DOCS, 源代码 | _INSTRUCTION |
-| **Coder** | 最小化执行 | _INSTRUCTION, Scope 内文件 | Scope 内文件 |
-| **Evaluator** | 审计与闭环 | _PLAN, _INSTRUCTION, diff | LOGS, _PLAN (勾选) |
-| Archivist | 熵减与压缩 | _PLAN, LOGS, _DOCS | _SNAPSHOT, _PLAN (清理) |
+| 角色 | 核心职能 | 读取权限 | 写入权限 | **新能力 (v2.1)** |
+| --- | --- | --- | --- | --- |
+| **Planner** | 战略转战术 | `_PLAN.md`, 所有 `_DOCS/`, 代码 | `_INSTRUCTION.md` | ✨ 必须检查依赖关系图<br>✨ 可定义参考范围（只读） |
+| **Coder** | 最小化执行 | `_INSTRUCTION.md`, `_FIX_INSTRUCTION.md`, 上下文范围, 参考范围 | 仅上下文范围文件 | ✨ 可读取参考范围（只读）<br>✨ 支持调试模式 |
+| **Evaluator** | 审计与质量关卡 | `_PLAN.md`, `_INSTRUCTION.md`, 代码差异 | `LOGS/`, `_PLAN.md` 复选框, `_FIX_INSTRUCTION.md` | ✨ 可激活调试模式<br>✨ 验证依赖意识 |
+| **Archivist** | 记忆压缩 | `_PLAN.md`, `LOGS/`, 所有 `_DOCS/` | `05_PROJECT_SNAPSHOT.md`, `03_SERVER_ACTIONS.md`, 清理 | ✨ 执行影响审计<br>✨ 记录 API 副作用 |
 
 ---
 
 ## 三、 标准化作业流程 (SOP)
 
-### 🌀 核心循环：P-C-E-A Loop
+<img src="https://github.com/JeffSiaYuHeng/dual-brain-system/blob/main/P-C-E-A%20Loop.png?raw=true" alt="P-C-E-A Loop" width="500">
 
-### Step 1: 战术建模 (Planner 阶段)
+### 🌀 核心循环
 
-- **动作**：根据 _PLAN.md 的 CURRENT FOCUS 和 _SNAPSHOT.md 的当前状态，输出 _INSTRUCTION.md。
-- **指标**：定义 **Context Scope** (≤ 4个文件) 和 **Out of Scope**。
+系统现在支持**两条执行路径**：
 
-### Step 2: 隔离手术 (Coder 阶段)
+#### **正常流程：P → C → E (→ A)**
 
-- **动作**：**盲目**执行指令。禁止读取 _PLAN.md，禁止修改 Scope 外文件。
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  正常开发循环                                                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1️⃣ PLANNER（规划者）：                                         │
+│     - 检查 06_DEPENDENCY_GRAPH.md                               │
+│     - 定义上下文范围（≤4 个文件，可写）                          │
+│     - 定义参考范围（≤2 个文件，只读）                            │
+│     - 创建 _INSTRUCTION.md                                       │
+│                                                                  │
+│  2️⃣ CODER（编码者）：                                          │
+│     - 读取 _INSTRUCTION.md                                       │
+│     - 读取参考范围获取上下文                                     │
+│     - 仅修改上下文范围文件                                       │
+│     - 报告完成                                                   │
+│                                                                  │
+│  3️⃣ EVALUATOR（评估者）：                                      │
+│     - 运行构建验证                                               │
+│     - 检查范围遵守情况                                           │
+│     - 验证依赖意识                                               │
+│     - 记录结果 + 勾选复选框                                      │
+│     - 如果是简单错误 → 激活调试模式                              │
+│                                                                  │
+│  决策：还有任务？ → 回到 PLANNER                                 │
+│        达到里程碑？ → 运行 ARCHIVIST                             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### Step 3: 停机审计 (Evaluator 阶段)
+#### **调试流程：E → C → E（快速路径）** ⚡ 新增
 
-- **动作**：核对代码是否实现 _PLAN 意图，检查是否有 Scope 溢出，并在 LOGS/ 生成记录。
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  调试模式（绕过 Planner 处理简单错误）                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  EVALUATOR 检测到简单错误：                                      │
+│  - 语法错误（缺少分号、括号）                                    │
+│  - 缺失导入                                                      │
+│  - 拼写错误（变量名不匹配）                                      │
+│  - 简单类型注解                                                  │
+│                                                                  │
+│  ↓                                                               │
+│  EVALUATOR 创建 _FIX_INSTRUCTION.md                             │
+│  （绕过 Planner - 节省时间）                                     │
+│                                                                  │
+│  ↓                                                               │
+│  CODER 仅应用指定的修复                                          │
+│  （不添加功能，不重构）                                          │
+│                                                                  │
+│  ↓                                                               │
+│  EVALUATOR 重新审计：                                            │
+│  - 成功 → 继续正常流程                                           │
+│  - 仍然失败 → 上报给 Planner                                     │
+│  - 最多 2 次迭代，然后上报                                       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### Step 4: 熵减压缩 (Archivist 阶段 - 触发式)
+### 步骤 1：战术建模（Planner 阶段）
 
-- **触发**：当里程碑完成、或 LOGS/ 文件过多、或 _PLAN.md 已办事项堆积时。
-- **动作**：
-    1. 提取 LOGS/ 中的关键决策进入 04_PROJECT_SNAPSHOT.md。
-    2. 清理 _PLAN.md 中已完成的任务。
-    3. 重置 _INSTRUCTION.md 为待机状态。
+**输入**：`_PLAN.md` 当前焦点
+**输出**：`_INSTRUCTION.md`
+
+**流程**（v2.1 更新）：
+1. 从 `_PLAN.md` 读取当前焦点
+2. **🆕 检查 `06_DEPENDENCY_GRAPH.md`** 了解文件关系
+3. 识别目标文件是否为"高影响"（被很多其他文件导入）
+4. 定义**上下文范围**（≤4 个文件，可写）
+5. **🆕 定义参考范围**（≤2 个文件，只读上下文）
+6. 创建包含清晰步骤和约束的 `_INSTRUCTION.md`
+
+**范围决策矩阵**：
+| 导入者数量 | 风险 | 行动 |
+|-----------|------|------|
+| 0-2 | 低 | 标准上下文范围 |
+| 3-5 | 中 | 添加警告说明 |
+| 6-10 | 高 | 添加 1-2 个导入者到参考范围 |
+| 10+ | 关键 | 拆分任务或扩大范围 |
+
+### 步骤 2：隔离手术（Coder 阶段）
+
+**输入**：`_INSTRUCTION.md` 或 `_FIX_INSTRUCTION.md`
+**输出**：修改后的代码
+
+**流程**（v2.1 更新）：
+1. **🆕 检查存在哪个指令文件**：
+   - `_FIX_INSTRUCTION.md` → 调试模式（仅快速修复）
+   - `_INSTRUCTION.md` → 正常模式（功能实现）
+2. **🆕 读取参考范围**（如果指定）获取使用上下文
+3. **仅修改**上下文范围文件
+4. **绝不修改**参考范围（只读）
+5. 报告完成
+
+**限制**：
+- ❌ 不能读取 `_PLAN.md`
+- ❌ 不能修改上下文范围外的文件
+- ❌ 不能修改参考范围文件（只读）
+- ❌ 调试模式下：不能添加功能或重构
+
+### 步骤 3：停机审计（Evaluator 阶段）
+
+**输入**：代码变更、`_INSTRUCTION.md`、`_PLAN.md`
+**输出**：日志条目、复选框勾选，或 `_FIX_INSTRUCTION.md`
+
+**流程**（v2.1 更新）：
+1. 运行结构同步：`npm run gen:structure`
+2. 清除缓存（例如 `rm -rf .next`）
+3. **构建验证**：`npm run build`
+4. **🆕 如果构建失败且为简单错误**：
+   - 语法错误、缺失导入、拼写错误 → **激活调试模式**
+   - 创建 `_FIX_INSTRUCTION.md`
+   - 绕过 Planner（快速路径）
+5. 如果构建通过：
+   - 验证范围遵守情况
+   - **🆕 检查依赖意识**（如果修改了高影响文件）
+   - 创建日志条目
+   - 在 `_PLAN.md` 中勾选复选框
+
+**调试模式资格**：
+| 错误类型 | 调试模式？ |
+|----------|------------|
+| 语法错误 | ✅ 是 |
+| 缺失导入 | ✅ 是 |
+| 拼写错误 | ✅ 是 |
+| 逻辑错误 | ❌ 否 → 上报给 Planner |
+| 架构违规 | ❌ 否 → 上报给 Planner |
+
+### 步骤 4：熵减（Archivist 阶段 - 触发式）
+
+**触发条件**：里程碑完成、`LOGS/` > 10 个文件，或 `_PLAN.md` > 100 行
+
+**流程**（v2.1 更新）：
+1. 扫描 `_PLAN.md` 中已完成的任务
+2. 从 `LOGS/` 提取关键决策
+3. **🆕 执行影响审计**：
+   - 审查已完成任务中的 API 变更
+   - **🆕 使用副作用更新 `03_SERVER_ACTIONS.md`**
+   - **🆕 如需要添加破坏性变更注释**
+   - 记录受影响的文件
+4. 更新 `05_PROJECT_SNAPSHOT.md`
+5. 清理 `_PLAN.md`（删除已完成任务）
+6. 归档或删除旧日志
+
+**副作用文档示例**：
+```markdown
+### updateUserProfile（在 03_SERVER_ACTIONS.md 中）
+
+**副作用**：
+- ⚠️ 更改 `email` 会触发邮件验证工作流
+- ⚠️ 更新 `role` 会使缓存的权限失效
+
+**⚠️ 破坏性变更 (2026-02-13)**：
+- 返回类型从 `{success: boolean}` 变为 `{success: boolean, userId: string}`
+- 使用此操作的前端组件必须更新
+```
 
 ---
 
-## 四、 防御性规则 (Defensive Rules)
+## 四、 新功能 (v2.1)
 
-1. **禁止“顺手修理”**：Coder 发现 Scope 外有错，必须汇报 Planner，严禁私自修改。
-2. **禁止“猜测路径”**：若结构文档未更新导致路径找不到，Coder 必须立即 **Stop**。
-3. **单向可见性**：Coder 不知道“大目标”，只执行“原子指令”。防止 AI 为了凑合大目标而引入系统性 Bug。
-4. **快照即真理**：当 LOGS 细节与 SNAPSHOT 冲突时，以 SNAPSHOT 为准。
+### 🔗 依赖关系图分析
 
-## 五、 按需分配模型 (Cost-aware Routing)
+**目的**：通过理解文件关系防止破坏性变更
+
+**工作原理**：
+1. 运行 `npm run gen:graph` 分析导入/导出
+2. 生成包含以下内容的 `06_DEPENDENCY_GRAPH.md`：
+   - 高影响文件（被很多其他文件导入）
+   - 完整依赖映射
+   - 反向依赖映射（谁导入了什么）
+3. Planner **必须在**定义范围前查阅此文件
+
+**优势**：
+- ✅ 100% 准确（基于实际代码）
+- ✅ 零 token 成本（预生成）
+- ✅ 防止"忘记更新调用者"的错误
+- ✅ 实现更智能的参考范围决策
+
+**示例**：
+```
+任务：修改 lib/utils/validation.ts
+
+Planner 检查 06_DEPENDENCY_GRAPH.md：
+→ 发现：validation.ts 被 12 个文件导入
+→ 主要导入者：login/page.tsx, UserForm.tsx
+→ 决策：将这些添加到参考范围（只读）
+
+结果：Coder 看到 validation 的使用方式，但不修改调用者
+```
+
+### 📖 参考范围（只读上下文）
+
+**目的**：提供上下文而不授予修改权限
+
+**工作原理**：
+- Planner 在 `_INSTRUCTION.md` 中定义参考范围（≤2 个文件）
+- Coder 可以**读取**这些文件以理解使用模式
+- Coder **不能修改**参考范围文件
+
+**使用场景**：
+- 类型定义文件
+- 导入目标文件的文件
+- 共享工具以理解参数
+
+**示例**：
+```markdown
+## 上下文范围（可写）
+- lib/utils/date-formatter.ts
+
+## 参考范围（只读）
+- app/dashboard/analytics/page.tsx（使用 formatDate）
+- components/charts/TimeSeriesChart.tsx（使用 formatTimestamp）
+```
+
+### ⚡ 调试模式（快速路径）
+
+**目的**：跳过 Planner 处理简单错误
+
+**工作原理**：
+1. Evaluator 检测到简单错误（语法、导入、拼写错误）
+2. 直接创建 `_FIX_INSTRUCTION.md`
+3. Coder 仅应用修复
+4. Evaluator 重新审计
+5. 最多 2 次迭代，然后上报给 Planner
+
+**优势**：
+- 🚀 简单错误快 3-5 倍
+- ⚡ 绕过规划开销
+- 🎯 仅聚焦修复
+
+**合格错误**：
+- 语法错误（缺少分号、括号）
+- 缺失导入
+- 变量名拼写错误
+- 简单类型注解
+
+**不合格**（上报给 Planner）：
+- 逻辑错误
+- 架构违规
+- 架构问题
+- 多个不相关的错误
+
+### 🔍 影响审计（API 完整性）
+
+**目的**：防止前后端契约漂移
+
+**工作原理**：
+- Archivist 在里程碑时审查已完成任务
+- 识别 API/服务器操作变更
+- 使用以下内容更新 `03_SERVER_ACTIONS.md`：
+  - 副作用（还会触发什么）
+  - 破坏性变更（返回类型变更）
+  - 受影响的组件
+
+**优势**：
+- ✅ 前端永远不会使用过时的契约
+- ✅ 副作用是显式的
+- ✅ 破坏性变更有清晰文档
+
+---
+
+## 五、 防御性规则
+
+1. **禁止"顺手修理"**：Coder 发现 Scope 外有错，必须汇报 Planner。严禁私自修改。
+2. **禁止"猜测路径"**：若路径找不到，Coder 必须立即 **STOP** 并重新生成结构：`npm run gen:structure`。
+3. **单向可见性**：Coder 不知道"大目标"，只执行"原子指令"。防止范围蔓延。
+4. **快照即真理**：当 `LOGS` 细节与 `SNAPSHOT` 冲突时，以 `SNAPSHOT` 为准。
+5. **🆕 参考范围神圣不可侵犯**：Coder 可以读取但绝不能修改参考范围文件。
+6. **🆕 依赖意识必需**：Planner 在定义范围前必须检查依赖关系图。
+7. **🆕 调试模式限制**：在上报给 Planner 前最多 2 次迭代。
+
+---
+
+## 六、 按需分配模型 (Cost-aware Routing)
 
 基于任务难度与 Token 消耗的平衡，建议采用以下模型分配方案：
 
-- **Planner (高级大脑)**：使用 **Claude 4.5 Sonnet** 或 **GPT-4o**。需要极强的逻辑推演能力。
-- **Coder (手术刀)**：使用 **Gemini 2.5 Flash**。指令已明确，追求速度与低廉的上下文成本。
-- **Evaluator (审计员)**：使用 **Claude 4.5 Sonnet**。对代码 Diff 和合规性检查非常敏锐。
-- **Archivist (记忆官)**：使用 **Claude 4.5 Sonnet** 或 **DeepSeek-V3/R1**。需要极强的信息聚合与归纳能力，将冗长的日志压缩为高密度结论。
+| 角色 | 推荐模型 | 理由 |
+|------|---------|------|
+| **Planner** | Claude 3.5 Sonnet/4.5, GPT-4o | 需要逻辑推演、依赖分析 |
+| **Coder** | Gemini 2.0 Flash, Claude Haiku | 指令明确；追求速度和低成本 |
+| **Evaluator** | Claude 3.5 Sonnet/4.5 | 对代码差异和合规性检查敏锐 |
+| **Archivist** | Claude 3.5 Sonnet, DeepSeek-V3/R1 | 强大的信息聚合与归纳能力 |
 
 ---
-## 六、 初始化与快速开始指南
 
-### 前置条件
+## 七、 初始化与快速开始指南
 
-开始前，确保你拥有：
+### 前提条件
 
-1. **一个新的项目仓库**，包含基础脚手架（Next.js、Django、Flutter 等）
-2. **AI 模型的访问权限**，与第五章的成本感知路由相符
-3. **基本的技术栈知识**
-4. **30-60 分钟**的初始化时间
-5. **Markdown 编辑器**（VS Code、Obsidian 等）
+1. **Node.js**（v14+）用于自动化脚本
+2. **新项目仓库**带基本脚手架
+3. **访问 AI 模型**符合按需分配路由
+4. **30-60 分钟**初始设置时间
 
-### 🚀 项目初始化清单（仅需执行一次）
+### 🚀 项目初始化（执行一次）
 
-#### 第一步：创建目录结构
+#### 步骤 1：安装系统
+
+```bash
+# 克隆或复制双脑结构
+git clone <your-repo>
+cd your-project
+
+# 安装依赖
+npm install
+
+# 可选：安装 madge 以获得更好的依赖分析
+npm install -g madge
+```
+
+#### 步骤 2：创建目录结构
 
 ```bash
 your-project/
-├── _DOCS/                 # 长期记忆
-│   ├── 00_STRUCTURE.md
-│   ├── 01_DB_SCHEMA.md
-│   ├── 02_STYLE_GUIDE.md
-│   ├── 03_SERVER_ACTIONS.md
-│   ├── 04_TECH_STACK.md
-│   ├── 05_PROJECT_SNAPSHOT.md
+├── _DOCS/                      # 长期记忆
+│   ├── 00_STRUCTURE.md         # 自动生成
+│   ├── 01_DB_SCHEMA.md         # 手动
+│   ├── 02_STYLE_GUIDE.md       # 手动
+│   ├── 03_SERVER_ACTIONS.md    # 手动 + Archivist
+│   ├── 04_TECH_STACK.md        # 手动
+│   ├── 05_PROJECT_SNAPSHOT.md  # Archivist
+│   ├── 06_DEPENDENCY_GRAPH.md  # 自动生成 ✨ 新增
 │   └── LOGS/
-│       └── LOG(format).md
-├── _TASK/                 # 工作记忆
+├── _TASK/                      # 工作记忆
 │   ├── _PLAN.md
 │   ├── _INSTRUCTION.md
-│   └── _RESULT.md (可选：用于评估笔记)
-├── src/                   # 你的实际源码
-├── README.md
-└── .gitignore
+│   └── _FIX_INSTRUCTION.md     # ✨ 新增（由 Evaluator 创建）
+├── .agent/                     # Agent 技能
+│   └── skills/
+│       ├── dual-brain-planner/
+│       ├── dual-brain-coder/
+│       ├── dual-brain-evaluator/
+│       └── dual-brain-archivist/
+├── scripts/
+│   ├── generate-structure.js
+│   └── generate-dependency-graph.js  # ✨ 新增
+├── src/                        # 你的实际源代码
+├── package.json
+└── README.md
 ```
 
-#### 第二步：初始化长期记忆 (_DOCS)
-
-**创建 `_DOCS/00_STRUCTURE.md`：**
-- 映射实际代码库的**整体目录结构**
-- 列出所有关键文件夹及其用途
-- 标注使用的技术/框架
-- 例：[参考工作区的结构示例]
-
-**🔧 自动生成方案（推荐）：**
-除了手动创建，你也可以使用提供的 `scripts/generate-structure.js` 来自动扫描并生成结构：
+#### 步骤 3：生成文档
 
 ```bash
-# 将 generate-structure.js 放入你的 scripts/ 目录，然后运行：
-node scripts/generate-structure.js
-
-# 或在 package.json 中添加：
-"scripts": {
-  "gen:structure": "node scripts/generate-structure.js"
-}
-
-# 然后运行：
+# 生成结构图
 npm run gen:structure
+
+# 生成依赖关系图（需要源代码）
+npm run gen:graph
+
+# 一次生成两者
+npm run gen:all
+
+# 推荐：每次规划会话前运行
+npm run pre-plan
 ```
 
-**脚本特性：**
-- 🤖 自动生成当前目录树
-- 🚫 自动忽略：`node_modules`、`.git`、`.next`、`dist`、`build`、`coverage` 等
-- ⚡ 通过反映实际文件系统来防止 AI 虚构路径
-- 📊 包含扫描目录和文件计数
-- 🔄 可以安全地重复运行（重新生成文件）
-- 🎯 可配置的扫描深度和忽略目录
+#### 步骤 4：初始化核心文档
 
-**优势：**
-- 无需手动维护
-- 始终反映当前项目结构
-- 完美用于预规划代理执行
-- 消除开发过程中的"路径未找到"错误
-
-**创建 `_DOCS/01_DB_SCHEMA.md`：**
-- 定义你的数据库模式（表、字段、类型、关系）
-- 记录任何约束或索引
-- 包含迁移信息（如适用）
-- 这是**后端数据的唯一真理来源**
-
-**创建 `_DOCS/02_STYLE_GUIDE.md`：**
-- 文档 UI/UX 约定（颜色、排版、间距）
-- 定义交互模式（弹窗、表单、导航）
-- 包含组件命名约定
-- 链接到设计系统（如有）
-
-**创建 `_DOCS/03_SERVER_ACTIONS.md`：**
-- 列出所有 API 端点或服务器操作，包含：
-  - HTTP 方法 / 函数名称
-  - 请求/响应模式
-  - 身份验证需求
-  - 错误代码
-- 格式为参考表或 OpenAPI 规范
-
-**创建 `_DOCS/04_TECH_STACK.md`：**
-- 列出批准的框架、库和工具
-- 定义版本约束
-- 标注任何已弃用或禁用的库
-- 包含开发环境设置要求
-
-**创建 `_DOCS/05_PROJECT_SNAPSHOT.md`：**
-- 高级功能完成状态
-- 按功能分解（**不是**逐行代码）
-- 已知问题和技术债
-- 关键指标（组件数、测试覆盖率等）
-- 这由 **Archivist 角色维护**
-
-**创建 `_DOCS/LOGS/LOG(format).md`：**
-- 开发会话日志的模板
-- 包含：目标、已完成任务、问题、下一阶段重点
-- 命名约定：`YYYY-MM-DD.md` 或 `YYYY-MM-DD_任务名.md`
-
-#### 第三步：初始化工作记忆 (_TASK)
-
-**创建 `_TASK/_PLAN.md`：**
-
+**创建 `_DOCS/01_DB_SCHEMA.md`**（手动）：
 ```markdown
-# 战略板 (计划)
+# 数据库模式
+
+## User 表
+| 字段 | 类型 | 约束 |
+|------|------|------|
+| id | UUID | 主键 |
+| email | String | 唯一, 非空 |
+| password | String | 已哈希 |
+| created_at | Timestamp | 默认: now() |
+```
+
+**创建 `_DOCS/02_STYLE_GUIDE.md`**（手动）：
+```markdown
+# 样式指南
+
+## 颜色
+- 主色：#3B82F6
+- 错误：#EF4444
+
+## 组件
+- 使用 shadcn/ui 组件
+- Tailwind 用于样式
+```
+
+**创建 `_DOCS/03_SERVER_ACTIONS.md`**（手动）：
+```markdown
+# 服务器操作
+
+## registerUser
+**参数**：`{ email: string, password: string }`
+**返回**：`{ success: boolean, userId?: string }`
+
+**副作用**：✨ 新增
+- 触发欢迎邮件
+- 创建默认用户首选项
+```
+
+**创建 `_DOCS/04_TECH_STACK.md`**（手动）：
+```markdown
+# 技术栈
+
+## 批准的
+- Next.js 15
+- React 19
+- TypeScript
+- Prisma ORM
+- Tailwind CSS
+
+## 禁止的
+- jQuery
+- Lodash（使用原生 JS）
+```
+
+**创建 `_TASK/_PLAN.md`**：
+```markdown
+# 战略板
 
 ## 路线图
-1. [ ] Phase 1: 核心功能 A
-2. [ ] Phase 2: 核心功能 B
-3. [ ] Phase 3: 集成与优化
+- [ ] 阶段 1：身份验证
+- [ ] 阶段 2：仪表板
+- [ ] 阶段 3：分析
 
-## CURRENT FOCUS
-(用自然语言写出你的第一个任务)
-- 例：用 Email/密码实现用户认证流程
+## 当前焦点
+（在这里写下你的第一个任务）
 
-## 笔记/便签
-- 任何观察、决策或约束条件
+## 备注
+（决策、观察、约束）
 ```
 
-**创建 `_TASK/_INSTRUCTION.md`：**
-
-保持**空白或待机状态**，直至 Planner 阶段填充。
-
-```markdown
-# 任务指令
-
-## 状态
-**等待 Planner 分配**
-
-(当从 _PLAN.md 选择 CURRENT FOCUS 时，此文件将被填充)
-```
-
-#### 第四步：提交到 Git（可选但推荐）
+#### 步骤 5：第一次规划会话
 
 ```bash
-git add _DOCS/ _TASK/
-git commit -m "init: 初始化双脑系统结构"
+# 1. 生成最新的结构和依赖
+npm run pre-plan
+
+# 2. 在 _TASK/_PLAN.md 中更新当前焦点
+# 示例："实现用户注册表单"
+
+# 3. 运行 Planner agent（或手动创建 _INSTRUCTION.md）
+# Planner 将：
+#  - 检查 06_DEPENDENCY_GRAPH.md
+#  - 定义上下文范围
+#  - 定义参考范围（如需要）
+#  - 创建 _INSTRUCTION.md
+
+# 4. 运行 Coder agent 实现
+
+# 5. 运行 Evaluator agent 验证
 ```
 
 ---
 
-### ⚡ 标准工作流程：P-C-E 循环（迭代执行直到组件完成）
-
-> **关键概念**：Planner → Coder → Evaluator 循环**对每一个原子任务重复**，直到完整组件/功能完成。**之后才执行 Archivist**。
+### ⚡ 标准工作流
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  一个工作循环（重复直到组件完成）                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1️⃣ PLANNER: 定义任务 → _INSTRUCTION.md                       │
-│  2️⃣ CODER: 执行指令                                            │
-│  3️⃣ EVALUATOR: 审查与记录结果                                  │
-│                                                                  │
-│  决策点：                                                        │
-│  ├─ 组件完成了吗? → 执行 ARCHIVIST                            │
-│  └─ 还有更多任务? → 重复 (返回 PLANNER 选择下一个任务)        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  每次会话前                                                   │
+├─────────────────────────────────────────────────────────────┤
+│  npm run pre-plan（重新生成结构 + 依赖关系图）               │
+└─────────────────────────────────────────────────────────────┘
         ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  ARCHIVIST（运行一次，在组件完成时）                           │
-│  - 合并日志 → 更新 _SNAPSHOT.md                               │
-│  - 清理 _PLAN.md                                              │
-│  - 归档旧日志                                                   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  1️⃣ PLANNER                                                │
+│  - 读取 _PLAN.md 当前焦点                                    │
+│  - 检查 06_DEPENDENCY_GRAPH.md  ✨                          │
+│  - 定义上下文 + 参考范围                                     │
+│  - 创建 _INSTRUCTION.md                                      │
+│  时长：5-10 分钟                                             │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  2️⃣ CODER                                                  │
+│  - 读取 _INSTRUCTION.md（或 _FIX_INSTRUCTION.md）          │
+│  - 读取参考范围获取上下文                                    │
+│  - 仅修改上下文范围文件                                      │
+│  时长：30 分钟 - 2 小时                                      │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  3️⃣ EVALUATOR                                              │
+│  - 运行构建验证                                              │
+│  - 如果是简单错误 → 调试模式  ✨                             │
+│  - 如果通过 → 日志 + 勾选复选框                              │
+│  时长：10-20 分钟                                            │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+      决策点：
+      ├─ 还有任务？ → 回到 PLANNER
+      └─ 里程碑？ → 运行 ARCHIVIST
 ```
 
 ---
 
-#### **阶段 1：Planner** 🧠
+### 📋 具体示例：构建你的第一个功能
 
-**何时**：每个开发任务之前
-**谁**：你（人工操作者）或一个战略性 AI 代理
-**耗时**：5-10 分钟
+**场景**：构建用户身份验证系统
 
-**做什么**：
+#### **迭代 1：注册表单**
 
-1. **阅读** `_PLAN.md` 并确认下一个 **CURRENT FOCUS** 任务
-2. **检查** `_SNAPSHOT.md` 以了解已完成的工作和阻碍因素
-3. **审视** 相关的 `_DOCS/` 文件（结构、模式、API 规范、样式指南）
-4. **生成** `_INSTRUCTION.md` 包含：
-   - 清晰的**上下文**（为什么这个任务很重要）
-   - 明确的**上下文范围**（≤4 个文件要修改）
-   - 编号的、祈使式的**步骤**（要做什么，而非怎么做）
-   - **超出范围**部分（不能修改什么）
-   - **约束与规则**（模式、工具、需求）
-   - **质量清单**（如何验证成功）
+```
+🧠 PLANNER：
+   npm run pre-plan
 
-**示例输出** (_INSTRUCTION.md)：
-```markdown
-# 任务指令：实现用户注册表单
+   检查 06_DEPENDENCY_GRAPH.md：
+   - 还没有依赖（新文件）
 
-## 上下文
-让新用户能创建账户。解锁完整的认证流程。
-来自：_PLAN.md - Phase 1: 认证
+   创建 _INSTRUCTION.md：
 
-## 上下文范围（严格）
-- `src/components/Auth/RegisterForm.tsx`
-- `src/actions/user.ts`
-- `prisma/schema.prisma` (仅模式更新)
+   ## 上下文范围
+   - src/components/auth/RegisterForm.tsx（新）
+   - src/actions/user.ts（新）
 
-## 执行步骤
-1. 扩展 Prisma User 模型，添加 `emailVerified` 和 `verificationCode` 字段。
-2. 创建 RegisterForm 组件，实现 email/密码验证。
-3. 添加 `registerUser` 服务器操作，实现密码哈希和 DB 存储。
-4. 向前端返回成功/错误消息。
+   ## 参考范围
+   （无 - 新功能）
 
-## 超出范围
-- 暂不实现邮件验证。
-- 暂不创建登录页面。
-- 暂不修改认证中间件。
+   ## 步骤
+   1. 创建带邮箱/密码字段的 RegisterForm
+   2. 添加验证（Zod schema）
+   3. 创建 registerUser 服务器操作
+   4. 使用 bcrypt 哈希密码
 
-## 约束与规则
-- 使用 bcrypt 进行密码哈希（已在 `04_TECH_STACK.md` 中）。
-- 在 DB 执行前验证邮箱格式。
-- 生产代码中禁止 console.logs。
+   ## 超出范围
+   - 登录表单（下一个任务）
+   - 邮箱验证（稍后）
 
-## 质量清单
-- [ ] 表单验证对无效邮箱工作。
-- [ ] 密码在存储前被哈希。
-- [ ] 错误消息对用户友好。
-- [ ] 代码遵循现有代码库的模式。
+🔧 CODER：
+   读取 _INSTRUCTION.md
+   ✅ 创建 RegisterForm.tsx
+   ✅ 创建带 registerUser 操作的 user.ts
+   ✅ 本地测试
+   报告："注册表单完成"
+
+🔍 EVALUATOR：
+   npm run gen:structure（用新文件更新）
+   npm run build → ❌ 失败
+
+   错误："缺少导入：bcrypt"
+
+   🆕 调试模式激活：
+   创建 _FIX_INSTRUCTION.md：
+
+   ## 错误类型
+   IMPORT_MISSING
+
+   ## 目标文件
+   - src/actions/user.ts:3
+
+   ## 需要的修复
+   添加：import bcrypt from 'bcrypt'
+
+   移交给 Coder
+
+🔧 CODER（调试模式）：
+   读取 _FIX_INSTRUCTION.md
+   ✅ 添加缺少的导入
+   报告："导入已添加"
+
+🔍 EVALUATOR（重新审计）：
+   npm run build → ✅ 成功
+   ✅ 创建日志条目
+   ✅ 勾选复选框：[x] 注册表单
+
+   决策：更多身份验证任务 → 回到 PLANNER
+```
+
+#### **迭代 2：登录表单**
+
+```
+🧠 PLANNER：
+   npm run pre-plan
+
+   🆕 检查 06_DEPENDENCY_GRAPH.md：
+   - user.ts 被 RegisterForm.tsx 导入
+   - 风险：低（只有 1 个导入者）
+
+   创建 _INSTRUCTION.md：
+
+   ## 上下文范围
+   - src/components/auth/LoginForm.tsx（新）
+   - src/actions/user.ts（修改 - 添加 loginUser）
+
+   ## 参考范围
+   - src/components/auth/RegisterForm.tsx
+     （查看 registerUser 如何调用）
+
+   ## 步骤
+   1. 创建类似 RegisterForm 的 LoginForm
+   2. 向 user.ts 添加 loginUser 操作
+   3. 使用 bcrypt.compare 验证密码
+
+🔧 CODER：
+   读取 _INSTRUCTION.md
+   🆕 读取参考范围：RegisterForm.tsx（仅上下文）
+   ✅ 创建 LoginForm（匹配 RegisterForm 模式）
+   ✅ 向 user.ts 添加 loginUser
+   报告："登录表单完成"
+
+🔍 EVALUATOR：
+   npm run build → ✅ 成功
+   ✅ 验证范围：仅修改了 LoginForm 和 user.ts
+   ✅ 验证：未修改 RegisterForm（参考范围）
+   ✅ 创建日志条目
+   ✅ 勾选复选框：[x] 登录表单
+
+   决策：身份验证功能完成 → 运行 ARCHIVIST
+```
+
+#### **Archivist 阶段**
+
+```
+📚 ARCHIVIST：
+   扫描 _PLAN.md：
+   - [x] 注册表单
+   - [x] 登录表单
+
+   审查 LOGS/：
+   - 2026-02-13.md：注册 + 调试导入修复
+   - 2026-02-14.md：登录完成
+
+   🆕 影响审计：
+   检查 03_SERVER_ACTIONS.md：
+
+   更新为：
+
+   ### registerUser
+   **参数**：{ email, password }
+   **返回**：{ success, userId }
+   **副作用**：
+   - 触发欢迎邮件工作流
+   - 创建用户会话
+
+   ### loginUser
+   **参数**：{ email, password }
+   **返回**：{ success, token }
+   **副作用**：
+   - 使之前的会话失效
+   - 记录登录尝试
+
+   更新 05_PROJECT_SNAPSHOT.md：
+
+   ## 已完成功能
+   - [x] 用户身份验证
+     - 带验证的注册
+     - 带会话管理的登录
+     - 密码哈希（bcrypt）
+
+   清理：
+   ✅ 从 _PLAN.md 删除已完成任务
+   ✅ 归档旧日志
+   ✅ 重置 _INSTRUCTION.md
+
+   准备好进行：阶段 2 - 仪表板
 ```
 
 ---
 
-#### **阶段 2：Coder** 🔧
+### 🛠️ 快速参考：文件和脚本
 
-**何时**：`_INSTRUCTION.md` 准备就绪后
-**谁**：实现 AI 代理或你（开发者）
-**耗时**：30 分钟 - 2 小时（取决于任务范围）
+| 命令 | 目的 | 何时运行 |
+|------|------|----------|
+| `npm run gen:structure` | 生成文件树 | 规划前、添加文件后 |
+| `npm run gen:graph` | 生成依赖映射 | 规划前、更改导入后 |
+| `npm run gen:all` | 生成两者 | ✅ 每次会话前推荐 |
+| `npm run pre-plan` | gen:all 的别名 | 使用这个！ |
 
-**做什么**：
-
-1. **仅读** `_INSTRUCTION.md`（**不要**读 `_PLAN.md` 或 `_SNAPSHOT.md`）
-2. **检查** `_DOCS/` 中的参考文件以获取上下文（模式、样式指南、API 规范）
-3. **按顺序执行**各步骤，**仅修改上下文范围内的文件**
-4. **局部测试**确保所有步骤按预期工作
-5. **立即停止**如果需要修改超出范围的文件（向 Planner 报告）
-6. **反馈总结**包含更改摘要和任何阻碍
-
-**关键规则**：
-- ❌ **不要**读 `_PLAN.md`（防止范围蔓延和偏见）
-- ❌ **不要**修改上下文范围外的文件
-- ❌ **不要**在指令之外进行"改进"或"优化"
-- ✅ 如果指令模糊，要求澄清
-- ✅ 根据质量清单进行测试后再报告完成
+| 文件 | 谁读取它 | 谁写入它 |
+|------|---------|---------|
+| `06_DEPENDENCY_GRAPH.md` | Planner | 自动生成 |
+| `_INSTRUCTION.md` | Coder | Planner |
+| `_FIX_INSTRUCTION.md` | Coder | Evaluator（调试模式） |
+| 参考范围文件 | Coder（只读） | - |
 
 ---
 
-#### **阶段 3：Evaluator** 🔍
+### ⚠️ 常见陷阱和解决方案
 
-**何时**：Coder 报告完成后
-**谁**：你、另一个开发者或审计 AI 代理
-**耗时**：10-20 分钟
-
-**做什么**：
-
-1. **物理状态审计**（完整性验证）：
-   在审查逻辑前，请通过执行以下验证步骤来验证项目的物理状态：
-
-   **示例命令**（可能因技术栈而异）：
-   
-   ```bash
-   # 步骤 1：同步结构文档
-   npm run gen:structure
-   
-   # 步骤 2：清理缓存（防止陈旧的工件）
-   rm -rf .next          # 针对 Next.js (或 Windows 上: rmdir /s /q .next)
-   
-   # 步骤 3：验证构建完整性
-   npm run build
-   ```
-   
-   - **重要**：如果构建命令失败（非零退出码）：
-     1. **捕获**具体的错误消息、行号和堆栈跟踪
-     2. **立即停止**审计
-     3. 标记状态为 **失败（构建错误）**
-     4. 记录错误到日志（见下面第 5 步）
-
-2. **审查**代码更改（运行 `git diff` 查看所有修改）
-
-3. **验证** `_INSTRUCTION.md` 是否被完全执行
-
-4. **检查**无文件被修改超出上下文范围
-
-5. **运行**代码：
-   - 执行功能相关的测试
-   - 手动测试（快乐路径 + 边界情况）
-   - 检查与现有代码的集成问题
-
-6. **记录发现**到 `_DOCS/LOGS/YYYY-MM-DD.md`：
-   - 目标与已完成任务 ✅
-   - 发现的问题或 Bug ⚠️
-   - 下一步工作 🎯
-   - 任何技术决策
-
-**日志示例** (_DOCS/LOGS/2026-02-10.md)：
-```markdown
-# 日志：2026-02-10
-
-## 目标
-- 实现用户注册表单和验证。
-
-## 已完成的任务
-- [x] 扩展 Prisma User 模型，添加 emailVerified 字段。
-- [x] 创建 RegisterForm.tsx，实现 email/密码验证。
-- [x] 实现 `registerUser` 服务器操作，使用 bcrypt 哈希。
-- [x] 手动测试通过（快乐路径和验证错误）。
-
-## 问题与阻碍
-- 邮件验证 OTP 尚未集成（意图之外）。
-- 注意到表单在移动设备上需要填充（轻微 UX 问题，无阻碍）。
-
-## 下一个任务重点
-- 实现登录表单（结构类似注册）。
-- 然后：添加邮件验证流程。
-
-## 技术决策
-- 使用 bcrypt、saltRounds=10（遵循安全最佳实践）。
-```
-
----
-
-#### **评估后的决策** 🔄
-
-Evaluator 完成后：
-
-- **✅ 如果功能已完成**：跳到**Archivist 阶段**（见下文）
-- **❌ 如果还需要更多任务**：回到**阶段 1 (Planner)**，选择下一个 CURRENT FOCUS
-
-**例**：
-```
-Evaluator: "注册表单完成了。准备好做登录了吗？"
-Planner: "是的。现在重点：实现用户登录表单。"
-└─ 生成新的 _INSTRUCTION.md → Coder 执行 → Evaluator 审查 → 重复直到认证功能完成
-```
-
----
-
-#### **阶段 4：Archivist** 📚
-
-**何时**：**仅当一个完整的组件/功能完成时**（在多次 P-C-E 循环后）
-**谁**：你或 AI Archivist
-**耗时**：15-30 分钟
-**频率**：每个功能完成一次（例：认证后、购物车后、订单后等）
-
-**触发示例**：
-- ✅ "认证功能完成"（注册 + 登录 + 验证都完成了）
-- ✅ "购物车功能完成"（添加/删除 + 折扣 + 结账都完成了）
-- ❌ 不是每个单一任务后（开销过大）
-
-**做什么**：
-
-1. **压缩知识**：从 `LOGS/` 提取关键决策并合并到 `05_PROJECT_SNAPSHOT.md`
-2. **更新路线图**：在 `_PLAN.md` 中标记已完成项目并清理旧条目
-3. **重置指令**：清空 `_INSTRUCTION.md` 回到待机状态
-4. **巩固文档**：将任何新发现移入 `_DOCS/`（模式变化、新模式等）
-5. **归档日志**：将旧的日常日志移到历史文件夹或删除（如已合并）
-
-**示例**（Archivist 执行前）：
-```
-_PLAN.md:
-- [x] Phase 1.1: 用户注册 (完成)
-- [x] Phase 1.2: 用户登录 (完成)
-- [x] Phase 1.3: 邮件验证 (完成)
-- [ ] Phase 2: 购物车
-
-LOGS/:
-- 2026-02-07.md: 注册完成
-- 2026-02-08.md: 登录完成
-- 2026-02-09.md: 发现邮箱验证 Bug
-- 2026-02-10.md: Bug 修复，验证完成
-```
-
-**Archivist 执行后**：
-```
-_PLAN.md:
-- [ ] Phase 2: 购物车
-
-_SNAPSHOT.md (更新为):
-- [x] Phase 1: 用户认证 - 完成 ✅
-  - 注册：email/密码注册，包含验证
-  - 登录：基于会话的认证，安全令牌
-  - 邮件验证：基于 OTP 的确认
-  - 已知问题：需要 OTP 请求的速率限制（Phase 3 待办）
-  - 测试覆盖率：认证流程 87%
-
-LOGS/:
-- LOG(format).md (模板仅)
-- (旧的日常日志已删除或归档)
-```
-
----
-
-### 📋 具体例：构建你的第一个功能
-
-假设你在构建一个**食品订购系统**，从**餐厅列表**开始。
-
----
-
-**迭代 1：组件设置**
-
-```
-🧠 PLANNER 阶段：
-   更新 _PLAN.md CURRENT FOCUS:
-   "构建餐厅列表页面 - 显示所有餐厅，包含名称、评分、菜系"
-   
-   创建 _INSTRUCTION.md，范围为：
-   - src/pages/restaurants.tsx
-   - src/actions/restaurant.ts
-   - src/components/RestaurantCard.tsx
-
-🔧 CODER 阶段：
-   ✅ 创建 RestaurantCard 组件
-   ✅ 实现 getRestaurants() 操作
-   ✅ 构建页面布局，使用网格
-   ✅ 本地测试通过
-
-🔍 EVALUATOR 阶段：
-   ✅ 代码审查通过
-   ✅ 手动测试 OK
-   ✅ 日志："组件渲染完成。准备下一步搜索/过滤。"
-
-❓ 决策：还有更多餐厅功能工作? 是 → 继续循环
-```
-
-**迭代 2：搜索与过滤**
-
-```
-🧠 PLANNER 阶段：
-   更新 CURRENT FOCUS: "为餐厅列表添加搜索和菜系过滤"
-   
-   创建 _INSTRUCTION.md，范围为（不同任务，相同文件）：
-   - src/components/RestaurantFilter.tsx (新)
-   - src/actions/restaurant.ts (修改)
-   - src/pages/restaurants.tsx (修改)
-
-🔧 CODER 阶段：
-   ✅ 创建 RestaurantFilter 组件
-   ✅ 为 getRestaurants() 添加过滤逻辑
-   ✅ 更新页面使用过滤器状态
-   ✅ 本地测试通过
-
-🔍 EVALUATOR 阶段：
-   ✅ 代码审查通过
-   ✅ 手动测试 OK
-   ✅ 日志："搜索和过滤工作正常。餐厅功能完成。"
-
-❓ 决策：功能完成? 是 → 运行 ARCHIVIST
-```
-
-**ARCHIVIST 阶段：合并与继续**
-
-```
-📚 ARCHIVIST:
-   ✅ 更新 _SNAPSHOT.md:
-      [x] 餐厅列表 - 完成
-      - 显示所有餐厅
-      - 按名称搜索
-      - 按菜系过滤
-      
-   ✅ 更新 _PLAN.md:
-      删除已完成的餐厅任务
-      标记 "Phase 1: 餐厅列表" 为完成
-      
-   ✅ 归档 LOGS:
-      移除 2026-02-07.md 和 2026-02-08.md（旧日志）
-      
-   ✅ 清理 _INSTRUCTION.md → 待机状态
-
-😊 准备好下一功能："Phase 2: 购物车"
-```
-
----
-
-### 🛠️ 快速参考：何时使用每个文件
-
-| 问题 | 答案位置 | 谁读 |
+| 陷阱 | 症状 | 解决方案 (v2.1) |
 | --- | --- | --- |
-| "登录 API 在哪？" | `03_SERVER_ACTIONS.md` | Planner, Coder |
-| "User 表有哪些字段？" | `01_DB_SCHEMA.md` | 所有人 |
-| "我能用 Vue.js 吗？" | `04_TECH_STACK.md` | Planner |
-| "哪些功能已完成？" | `05_PROJECT_SNAPSHOT.md` | Planner, Archivist |
-| "上一个会话发生了什么？" | `LOGS/YYYY-MM-DD.md` | Evaluator, Archivist |
-| "我下一步应该构建什么？" | `_PLAN.md` (CURRENT FOCUS) | Planner |
-| "我确切地应该怎样构建它？" | `_INSTRUCTION.md` | Coder |
+| **破坏性变更** | 修改的文件破坏了调用者 | 首先检查 `06_DEPENDENCY_GRAPH.md` ✨ |
+| **范围蔓延** | Coder 修改了太多文件 | 上下文范围限制在 4 个文件 |
+| **简单错误循环** | Planner 浪费时间处理拼写错误 | 使用调试模式（E→C→E）✨ |
+| **参考范围违规** | Coder 修改只读文件 | 在 Coder 技能中强制只读 ✨ |
+| **API 漂移** | 前端使用过时的契约 | 运行影响审计（Archivist）✨ |
+| **虚构路径** | Coder 尝试不存在的文件 | 运行 `npm run gen:structure` |
+| **失去上下文** | Coder 读取 _PLAN.md | 严格执行仅指令读取 |
+| **过时的依赖** | 未检测到破坏性变更 | 定期运行 `npm run gen:graph` |
 
 ---
 
-### ⚠️ 常见陷阱与解决方案
+### 📚 其他资源
 
-| 陷阱 | 症状 | 修复 |
-| --- | --- | --- |
-| **范围蔓延** | _INSTRUCTION.md 太大或模糊 | 限制上下文范围为 4 个文件；使用祈使式语言 |
-| **虚构路径** | Coder 试图编辑不存在的文件 | 在 00_STRUCTURE.md 中首先列出所有路径 |
-| **丢失上下文** | Coder 读 _PLAN.md 并偏离 | 严格执行"Coder 仅读 _INSTRUCTION.md"规则 |
-| **陈旧快照** | LOGS 和 _SNAPSHOT.md 之间冲突 | 定期运行 Archivist 阶段（至少每周）|
-| **Token 膨胀** | 又长又无焦点的指令 | 将指令修剪为原子的、单个功能的任务 |
-| **无文档** | 难以引入另一个 AI/开发者 | 结构性更改后**立即**更新 _DOCS/ |
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - 单页速查表
+- **[SKILLS_UPDATE_SUMMARY.md](SKILLS_UPDATE_SUMMARY.md)** - 完整 v2.1 变更日志
+- **[DEPENDENCY_GRAPH_SETUP.md](DEPENDENCY_GRAPH_SETUP.md)** - 依赖分析设置指南
+- **[UPDATE_VERIFICATION.md](UPDATE_VERIFICATION.md)** - v2.1 中的变更内容
 
 ---
+
+### 🎯 成功指标
+
+使用 v2.1，你应该看到：
+- ✅ 更少的破坏性变更（依赖意识）
+- ✅ 更快的简单错误修复（调试模式）
+- ✅ 更好的实现上下文（参考范围）
+- ✅ 更清晰的 API 契约（影响审计）
+- ✅ 降低的 token 成本（预生成分析）
+
+---
+
+**版本**：2.1
+**最后更新**：2026-02-13
+**状态**：生产就绪
+
+如有疑问、问题或贡献，请参见 [GitHub 仓库](https://github.com/JeffSiaYuHeng/dual-brain-system)。
+
+---
+
+*使用双脑系统愉快地构建！🚀*

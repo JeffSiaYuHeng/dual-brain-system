@@ -1,0 +1,27 @@
+{
+  "name": "dual-brain-system",
+  "version": "1.0.0",
+  "description": "A systematic approach to AI-assisted development with separated Planning and Coding roles",
+  "private": true,
+  "scripts": {
+    "gen:structure": "node scripts/generate-structure.js",
+    "gen:graph": "node scripts/generate-dependency-graph.js",
+    "gen:all": "npm run gen:structure && npm run gen:graph",
+    "pre-plan": "npm run gen:all"
+  },
+  "keywords": [
+    "ai",
+    "development",
+    "architecture",
+    "planning"
+  ],
+  "author": "",
+  "license": "MIT",
+  "optionalDependencies": {
+    "madge": "^8.0.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

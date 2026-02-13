@@ -107,6 +107,74 @@ Before reviewing logic, you MUST verify the physical state of the project by exe
 
 ---
 
+## 🔧 Debug Mode (Short-Circuit Loop: E → C)
+
+### When to Use Debug Mode
+
+If the audit reveals a **simple, tactical error** that does not require strategic reconsideration, you MAY bypass the Planner and issue a direct fix instruction to the Coder.
+
+**Qualifying Errors for Debug Mode:**
+- **Syntax Error**: Missing semicolon, bracket, quote
+- **Import Missing**: Missing import statement or wrong import path
+- **Typo**: Variable name mismatch (e.g., `userName` vs `username`)
+- **Type Error**: Simple type annotation fix (e.g., missing `| null`)
+- **Linting Error**: Unused variable, missing return type
+
+**NOT Qualifying for Debug Mode (Must return to Planner):**
+- Logic errors (wrong algorithm, incorrect business logic)
+- Schema violations (database structure issues)
+- Architectural problems (wrong component structure)
+- Missing features (incomplete implementation)
+- Multiple unrelated errors
+
+### Debug Mode Workflow
+
+1. **Detect**: Identify a qualifying error during Step 0 (Build Check) or code review.
+2. **Create**: Generate `_TASK/_FIX_INSTRUCTION.md` using the template below.
+3. **Log**: Record the error in the daily log with status `FAILED (Debug Mode Activated)`.
+4. **Handover**: Inform the user: *"Build error detected. Debug Mode activated. Fix instruction ready for Coder."*
+
+### Template: `_TASK/_FIX_INSTRUCTION.md`
+
+```md
+# Fix Instruction (Debug Mode)
+
+## Error Type
+[SYNTAX_ERROR / IMPORT_MISSING / TYPE_ERROR / TYPO / LINTING]
+
+## Error Message
+```
+[Paste exact error from build output]
+```
+
+## Target File
+- path/to/broken-file.ts:LINE_NUMBER
+
+## Required Fix
+[Single-sentence description of what to fix]
+- Example: "Add missing import for `Button` from '@/components/ui/button'"
+- Example: "Change `userName` to `username` on line 42"
+
+## Constraints
+- DO NOT modify any other files
+- DO NOT change logic or add features
+- ONLY fix the reported error
+
+---
+
+## Verification
+After fix, run: `npm run build`
+```
+
+### Debug Mode Exit Conditions
+
+After the Coder applies the fix:
+- **Success**: Return to normal Evaluator workflow (Step 0-3)
+- **Still Failing**: Escalate to Planner with full error context
+- **New Error Emerged**: If the new error also qualifies for Debug Mode, issue another `_FIX_INSTRUCTION.md`. Maximum 2 Debug Mode iterations before escalating to Planner.
+
+---
+
 ## ✅ Task Closure (The "Ticking" Protocol)
 
 Only if the Audit results in a **PASSED** status:
@@ -120,7 +188,12 @@ Only if the Audit results in a **PASSED** status:
 
 ## ⏭ Final Handover
 
+
+**Standard Path:**
 Inform the user: *"Evaluation complete. Task [Passed/Failed]. [Log created/Plan updated]. Ready for next task or Archivist cleanup."*
+
+**Debug Mode Path:**
+Inform the user: *"Build error detected. Debug Mode activated. Fix instruction ready for Coder."*
 
 ## 📝 Post-Execution Logging (Mandatory)
 
@@ -134,9 +207,12 @@ Inform the user: *"Evaluation complete. Task [Passed/Failed]. [Log created/Plan
 - **Structure Update**: [Synced / No Change]
 
 ### 🚨 Critical Failure Context (If Build Failed)
-> **Planner Attention Required**:
+> **[Planner Attention Required / Debug Mode Activated]**:
 ```text
 [PASTE EXACT TERMINAL ERROR OUTPUT HERE]
 [Include file path, line number, and error message]
+```
+
+**Resolution Path**: [ESCALATED_TO_PLANNER / DEBUG_MODE_ACTIVATED / FIX_INSTRUCTION_ISSUED]
 
 ### End of Skill Definition

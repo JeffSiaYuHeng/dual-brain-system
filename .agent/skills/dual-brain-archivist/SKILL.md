@@ -10,8 +10,8 @@ You are the **Memory Manager**. Your goal is to combat "Information Entropy" by 
 ---
 
 ## 📂 Data Access
-- **Read**: `_TASK/_PLAN.md`, `_DOCS/LOGS/`, `_DOCS/PROJECT_SNAPSHOT.md`.
-- **Write**: `_DOCS/PROJECT_SNAPSHOT.md`, `_TASK/_PLAN.md`, `_DOCS/LOGS/` (Cleanup).
+- **Read**: `_TASK/_PLAN.md`, `_DOCS/LOGS/`, `_DOCS/PROJECT_SNAPSHOT.md`, `_DOCS/03_SERVER_ACTIONS.md`.
+- **Write**: `_DOCS/PROJECT_SNAPSHOT.md`, `_TASK/_PLAN.md`, `_DOCS/LOGS/` (Cleanup), `_DOCS/03_SERVER_ACTIONS.md` (Side Effect Updates).
 
 ---
 
@@ -26,7 +26,50 @@ You are the **Memory Manager**. Your goal is to combat "Information Entropy" by 
 - **Rule**: Do not record "how" it was done, only "what" the current state is.
 - Update the "Current Milestone Progress" percentage.
 
-### 3. Pruning (The Cleanup)
+### 3. Cross-Reference & Impact Audit (深度关联与副作用分析)
+
+**Target Document**: `_DOCS/03_SERVER_ACTIONS.md`
+
+**Purpose**: Prevent implicit breaking changes and frontend hallucination by maintaining accurate API contracts.
+
+**Analysis Steps**:
+
+1. **Logic Tracing (逻辑溯源)**:
+   - Review completed tasks in this Milestone
+   - Identify if any logic changes implicitly affect other API endpoints or server actions
+   - Example: "If user balance is updated, does it trigger notification logic?"
+
+2. **Side Effect Documentation (副作用标注)**:
+   - For each modified server action, add or update a `Side Effects` section
+   - Use explicit language: "Modifying field X will trigger Y logic's re-calculation"
+   - Format example:
+     ```md
+     ### updateUserProfile
+     **Side Effects**:
+     - ⚠️ Changing `email` triggers email verification workflow
+     - ⚠️ Updating `role` invalidates cached permissions
+     ```
+
+3. **Boundary Synchronization (边界同步)**:
+   - **CRITICAL**: If backend Action return structure changed (new fields, removed fields, type changes):
+     1. Update `03_SERVER_ACTIONS.md` immediately with new TypeScript interface
+     2. Add a `⚠️ BREAKING CHANGE` annotation with date
+     3. Mark affected frontend components in the log
+   - Example annotation:
+     ```md
+     **⚠️ BREAKING CHANGE (2026-02-13)**:
+     - Return type changed from `{success: boolean}` to `{success: boolean, userId: string}`
+     - Frontend components using this action must be updated
+     ```
+
+**Output Requirements**:
+- Each server action entry must have:
+  - Current signature (params → return type)
+  - Side effects list (if any)
+  - Last modified date
+  - Breaking change history (if applicable)
+
+### 4. Pruning (The Cleanup)
 - **_PLAN.md Reset**: Remove all completed tasks. Keep only the "Roadmap" and the next "Current Focus".
 - **Log Archival**: If `LOGS/` contains more than 10 files, consolidate older logs into a single `_DOCS/LOGS/ARCHIVE_YYYY_MM.md` and delete the individual files.
 
@@ -56,10 +99,12 @@ This file should be a high-density summary for the Planner to quickly re-orient.
 
 1. **Protect the Roadmap**: Never delete the future "Roadmap" section in _PLAN.md.
 2. **Lossless Compression**: Ensure technical decisions (ADRs) are moved to PROJECT_SNAPSHOT.md or a dedicated ADR file before deleting logs.
-3. **Trigger condition**: Only run when:
+3. **API Contract Integrity**: Before archiving, MUST verify that `03_SERVER_ACTIONS.md` reflects all backend changes from the completed Milestone. Outdated API docs = Frontend hallucination risk.
+4. **Side Effect Completeness**: Every server action that was modified must have its Side Effects section reviewed and updated.
+5. **Trigger condition**: Only run when:
     - A milestone is reached.
-    - OR _PLAN.md exceeds 100 lines.
-    - OR LOGS/ folder exceeds 10 entries.
+    - OR _PLAN.md exceeds 100 lines.
+    - OR LOGS/ folder exceeds 10 entries.
 
 ---
 
